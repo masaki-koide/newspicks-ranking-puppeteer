@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "target": "es6",
+    "lib": ["esnext"],
+    "moduleResolution": "node",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "exclude": ["node_modules"]
+}

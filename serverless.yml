@@ -1,0 +1,26 @@
+service:
+  name: newspicks-puppeteer
+
+# Add the serverless-webpack plugin
+plugins:
+  - serverless-webpack
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  region: ap-northeast-1
+  stage: ${opt:stage, self:custom.defaultStage}
+  profile: ${opt:profile, self:custom.defaultProfile}
+  environment: ${file(./conf.yml)}
+custom:
+  defaultStage: dev
+  defaultProfile: sls
+
+functions:
+  getRanking:
+    handler: handler.getRanking
+    events:
+      - http:
+          method: get
+          path: ranking
+          cors: true
