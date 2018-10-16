@@ -1,5 +1,9 @@
 import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda'
+import * as moment from 'moment'
 import * as puppeteer from 'puppeteer'
+import { Days, getDateQueryParams } from './helper'
+
+const host = 'https://newspicks.com/'
 
 export const getRanking: Handler = (
   event: APIGatewayEvent,
@@ -18,26 +22,66 @@ export const getRanking: Handler = (
   cb(null, response)
 }
 
+const login = async (page: puppeteer.Page) => {
+  const loginModalButton = '.register-or-login-items > .login'
+  await page.waitForSelector(loginModalButton)
+  await page.click(loginModalButton)
+
+  const nameInput = '[name=username]'
+  const passInput = '[name=password]'
+  const loginButton = '.login-btn'
+  await page.waitForSelector(nameInput, { visible: true })
+  await page.waitForSelector(passInput, { visible: true })
+  await page.waitForSelector(loginButton)
+  await page.type(nameInput, process.env.USER_NAME)
+  await page.type(passInput, process.env.PASSWORD)
+  await page.click(loginButton)
+
+  await page.waitForNavigation()
+}
+
 const crawl = async () => {
   // FIXME:テスト用
   const headless = !!process.env.NODE_ENV
   const browser = await puppeteer.launch({ headless })
   const page = await browser.newPage()
-  await page.goto('https://newspicks.com/')
+  await page.goto(host)
   const isLogined = await page.$('.self')
   if (!isLogined) {
-    const loginButtonSelector = '.register-or-login-items > .login'
-    await page.waitForSelector(loginButtonSelector)
-    await page.click(loginButtonSelector)
-    const nameSelector = '[name=username]'
-    const passSelector = '[name=password]'
-    const buttonSelector = '.login-btn'
-    await page.type(nameSelector, process.env.USER_NAME)
-    await page.type(passSelector, process.env.PASSWORD)
-    await page.click(buttonSelector)
-    await page.waitForNavigation()
+    await login(page)
   }
-  // TODO:Moment.js
+  // TODO:periodのパラメータを受け取る
+  const { to, from } = getDateQueryParams(Days.day)
+  const queryParams = {
+    sort: 'picks',
+    q: '',
+    to,
+    from
+  }
+  const query = Object.keys(queryParams)
+    .map(key => `${key}=${queryParams[key]}`)
+    .join('&')
+  await page.goto(host + 'search?' + query)
+  await page.waitForSelector('.news-card-list')
+  const infos = await page.$$eval(
+    '.news-card-list > .search-result-card',
+    elements => {
+      return elements.map(element => {
+        const title = element.querySelector('.news-title').textContent
+        const pickCount = element.querySelector('.value').textContent
+        const date = element.querySelector('.published').textContent
+        const url = element.querySelector('.news-card > a').href
+        return {
+          title,
+          pickCount,
+          date,
+          url
+        }
+      })
+    },
+    host
+  )
+  console.log(infos)
   await browser.close()
 }
 
