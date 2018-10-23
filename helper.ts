@@ -1,4 +1,5 @@
 import * as moment from 'moment'
+import * as querystring from 'querystring'
 
 export enum Days {
   day = 1,
@@ -38,8 +39,6 @@ const getQueryParamsForRanking = (period: Days): QueryParams => {
 
 export const getQueryStringForRanking = (period: Days): string => {
   const queryParams = getQueryParamsForRanking(period)
-  const query = Object.keys(queryParams)
-    .map(key => `${key}=${queryParams[key]}`)
-    .join('&')
-  return 'search?' + query
+  const qs = querystring.stringify(queryParams)
+  return 'search?' + qs
 }
